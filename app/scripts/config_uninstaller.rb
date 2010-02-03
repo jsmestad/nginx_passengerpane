@@ -35,17 +35,29 @@ class ConfigUninstaller
   def config_path(index)
     "#{PassengerPaneConfig::PASSENGER_APPS_DIR}/#{@data[index]['host'].bypass_safe_level_1}.#{PassengerPaneConfig::PASSENGER_APPS_EXTENSION}"
   end
+
+  def remove_nginx_vhost_conf(index)
+    File.delete nginx_config_path(index)
+  end
+
+  def nginx_config_path(index)
+    "#{PassengerPaneConfig::PASSENGER_NGINX_APPS_DIR}/#{@data[index]['host'].bypass_safe_level_1}.#{PassengerPaneConfig::PASSENGER_NGINX_APPS_EXTENSION}"
+  end
   
   def restart_apache!
     system PassengerPaneConfig::APACHE_RESTART_COMMAND
   end
   
+  def reload_nginx!
+    system PassengerPaneConfig::NGINX_RELOAD_COMMAND
+  end
+
   def uninstall!
     (0..(@data.length - 1)).each do |index|
       remove_from_hosts index
-      remove_vhost_conf index
+      remove_nginx_vhost_conf index
     end
-    restart_apache!
+    reload_nginx!
   end
 end
 

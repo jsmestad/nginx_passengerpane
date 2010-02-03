@@ -21,9 +21,10 @@ class PassengerApplication < NSObject
     include SharedPassengerBehaviour
     
     VHOSTS_GLOB = File.join(PassengerPaneConfig::PASSENGER_APPS_DIR, "*.#{PassengerPaneConfig::PASSENGER_APPS_EXTENSION}")
+    NGINX_VHOSTS_GLOB = File.join(PassengerPaneConfig::PASSENGER_NGINX_APPS_DIR, "*.#{PassengerPaneConfig::PASSENGER_NGINX_APPS_EXTENSION}")
     
     def existingApplications
-      Dir.glob(VHOSTS_GLOB).map do |app|
+      Dir.glob(NGINX_VHOSTS_GLOB).map do |app|
         PassengerApplication.alloc.initWithFile(app)
       end
     end
@@ -81,7 +82,7 @@ class PassengerApplication < NSObject
     if init
       @new_app = false
       @valid = false
-      load_data_from_vhost_file(file)
+      load_data_from_nginx_vhost_file(file)
       set_original_values!
       self
     end
@@ -153,14 +154,15 @@ class PassengerApplication < NSObject
   
   def reload!
     return if new_app?
-    load_data_from_vhost_file
+    #load_data_from_vhost_file
+	load_data_from_nginx_vhost_file
     mark_dirty! if values_changed_after_load?
     set_original_values!
     self.valid = true
   end
   
   def save_config!
-    log "Saving configuration: #{config_path}"
+    log "Saving configuration: #{nginx_config_path}"
     execute PassengerPaneConfig::RUBY, CONFIG_INSTALLER, [to_hash].to_yaml
     set_original_values!
   end
@@ -169,6 +171,10 @@ class PassengerApplication < NSObject
     File.join(PassengerPaneConfig::PASSENGER_APPS_DIR, "#{@host}.#{PassengerPaneConfig::PASSENGER_APPS_EXTENSION}")
   end
   
+  def nginx_config_path
+    File.join(PassengerPaneConfig::PASSENGER_NGINX_APPS_DIR, "#{@host}.#{PassengerPaneConfig::PASSENGER_NGINX_APPS_EXTENSION}")
+  end
+
   def rbSetValue_forKey(value, key)
     super
     self.revertable = true
@@ -191,7 +197,8 @@ class PassengerApplication < NSObject
   
   def to_hash
     if @new_app
-      @user_defined_data = "  <Directory \"#{File.join(@path.to_s, 'public')}\">\n    Order allow,deny\n    Allow from all\n  </Directory>"
+      @user_defined_data = ""
+      #@user_defined_data = "  <Directory \"#{File.join(@path.to_s, 'public')}\">\n    Order allow,deny\n    Allow from all\n  </Directory>"
     else
       update_path_in_user_defined_data!
     end
@@ -199,6 +206,7 @@ class PassengerApplication < NSObject
     {
       'app_type' => application_type,
       'config_path' => config_path,
+	  'nginx_config_path' => nginx_config_path,
       'host' => @host.to_s,
       'aliases' => @aliases.to_s,
       'path' => @path.to_s,
@@ -219,6 +227,31 @@ class PassengerApplication < NSObject
     (File.exist?(env_file) and File.read(env_file) =~ /Rails::Initializer/) ? RAILS : RACK
   end
   
+  def load_data_from_nginx_vhost_file(file = nginx_config_path)
+    data = File.read(file).strip
+    data.gsub!(/\n\s*server_name\s+(.+);/, '')
+    self.host = $1
+
+    data.gsub!(/\n\s*root\s+"?(.+)\/public"?;/, '')
+    self.path = $1
+
+    data.gsub!(/\n\s*(rails|rack)_env\s+(\w+);/, '')
+    if %w{ development production }.include?($2)
+      self.environment = ($2 == 'development' ? DEVELOPMENT : PRODUCTION)
+    else
+      self.environment = nil
+      @custom_environment = $2
+    end
+
+    data.gsub!(/\n*\s*server\s*\{/, '')
+    data.gsub!(/\n\s*access_log\s+(.+);/, '')
+    data.gsub!(/\n\s*error_log\s+(.+);/, '')
+    data.gsub!(/\n\s*passenger_enabled\son;/, '')
+    data.gsub!(/\s*\}\n*/, '')
+    data.gsub!(/^\n*/, '')
+    #@user_defined_data = data
+  end
+
   def load_data_from_vhost_file(file = config_path)
     data = File.read(file).strip
     

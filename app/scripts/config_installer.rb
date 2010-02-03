@@ -35,7 +35,38 @@ class ConfigInstaller
       FileUtils.mkdir_p PassengerPaneConfig::PASSENGER_APPS_DIR
     end
   end
+
+  def verify_nginx_vhost_conf
+    unless File.exist? PassengerPaneConfig::PASSENGER_NGINX_APPS_DIR
+      OSX::NSLog("Will create directory: #{PassengerPaneConfig::PASSENGER_NGINX_APPS_DIR}")
+      FileUtils.mkdir_p PassengerPaneConfig::PASSENGER_NGINX_APPS_DIR
+    end
+  end
+
+  def gsub_file(path, regexp, *args, &block)
+    content = File.read(path).gsub(regexp, *args, &block)
+    File.open(path, 'wb') { |file| file.write(content) }
+  end
   
+  def verify_nginx_conf
+    conf = PassengerPaneConfig::NGINX_CONF
+    content = File.read(conf)
+    a = []
+    a << "http {"
+    if !content.match(/^\s*passenger_ruby\s+/)
+      a << "  passenger_ruby /opt/local/bin/ruby;"
+    end
+    if !content.match(/^\s*passenger_root\s+/)
+      a << "  passenger_root /opt/local/lib/passenger;"
+    end
+    if !content.include? "include #{PassengerPaneConfig::PASSENGER_NGINX_APPS_DIR}/*.conf"
+      a << "  include #{PassengerPaneConfig::PASSENGER_NGINX_APPS_DIR}/*.conf;"
+    end
+    gsub_file PassengerPaneConfig::NGINX_CONF, /http\s+\{/ do |match|
+        a.join("\n")
+    end
+  end
+
   def verify_httpd_conf
     unless File.read(PassengerPaneConfig::HTTPD_CONF).include? "Include #{PassengerPaneConfig::PASSENGER_APPS_DIR}/*.conf"
       OSX::NSLog("Will try to append passenger pane vhosts conf to: #{PassengerPaneConfig::HTTPD_CONF}")
@@ -73,20 +104,44 @@ class ConfigInstaller
     File.open(app['config_path'].bypass_safe_level_1, 'w') { |f| f << vhost }
   end
   
+  def create_nginx_vhost_conf(index)
+    app = @data[index]
+    public_dir = File.join(app['path'], 'public')
+    include_file = "#{PassengerPaneConfig::PASSENGER_NGINX_APPS_DIR}/#{@data[index]['host'].bypass_safe_level_1}.include"
+    vhost = [
+      "server {",
+      "  server_name #{app['host']};",
+      "  root \"#{public_dir}\";",
+      "  access_log /opt/local/var/log/nginx/#{app['host']}.access.log;",
+      "  error_log /opt/local/var/log/nginx/#{app['host']}.error.log;",
+      "  passenger_enabled on;",
+      "  #{app['app_type'].downcase}_env #{app['environment']};",
+      "  #include #{include_file};",
+      "}"
+    ].compact.join("\n")
+
+    OSX::NSLog("Will write nginx vhost file: #{app['nginx_config_path']}\nData: #{vhost}")
+    File.open(app['nginx_config_path'].bypass_safe_level_1, 'w') { |f| f << vhost }
+  end
+
   def restart_apache!
     system PassengerPaneConfig::APACHE_RESTART_COMMAND
   end
   
+  def reload_nginx!
+    system PassengerPaneConfig::NGINX_RELOAD_COMMAND
+  end
+
   def install!
-    verify_vhost_conf
-    verify_httpd_conf
+    verify_nginx_vhost_conf
+    verify_nginx_conf
     
     (0..(@data.length - 1)).each do |index|
       add_to_hosts index
-      create_vhost_conf index
+      create_nginx_vhost_conf index
     end
     
-    restart_apache!
+    reload_nginx!
   end
 end
 
