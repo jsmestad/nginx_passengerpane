@@ -24,7 +24,8 @@ class PassengerApplication < NSObject
     NGINX_VHOSTS_GLOB = File.join(PassengerPaneConfig::PASSENGER_NGINX_APPS_DIR, "*.#{PassengerPaneConfig::PASSENGER_NGINX_APPS_EXTENSION}")
     
     def existingApplications
-      Dir.glob(NGINX_VHOSTS_GLOB).map do |app|
+      files = apache? ? Dir.glob(VHOSTS_GLOB) : Dir.glob(NGINX_VHOSTS_GLOB) 
+      files.map do |app|
         PassengerApplication.alloc.initWithFile(app)
       end
     end
@@ -82,7 +83,11 @@ class PassengerApplication < NSObject
     if init
       @new_app = false
       @valid = false
-      load_data_from_nginx_vhost_file(file)
+      if apache?
+        load_data_from_vhost_file(file)
+      else
+        load_data_from_nginx_vhost_file(file)
+      end
       set_original_values!
       self
     end
@@ -154,25 +159,28 @@ class PassengerApplication < NSObject
   
   def reload!
     return if new_app?
-    #load_data_from_vhost_file
-	load_data_from_nginx_vhost_file
+    if apache?
+      load_data_from_vhost_file
+	  else
+      load_data_from_nginx_vhost_file
+    end
     mark_dirty! if values_changed_after_load?
     set_original_values!
     self.valid = true
   end
   
   def save_config!
-    log "Saving configuration: #{nginx_config_path}"
+    log "Saving configuration: #{config_path}"
     execute PassengerPaneConfig::RUBY, CONFIG_INSTALLER, [to_hash].to_yaml
     set_original_values!
   end
   
   def config_path
-    File.join(PassengerPaneConfig::PASSENGER_APPS_DIR, "#{@host}.#{PassengerPaneConfig::PASSENGER_APPS_EXTENSION}")
-  end
-  
-  def nginx_config_path
-    File.join(PassengerPaneConfig::PASSENGER_NGINX_APPS_DIR, "#{@host}.#{PassengerPaneConfig::PASSENGER_NGINX_APPS_EXTENSION}")
+    if apache?
+      File.join(PassengerPaneConfig::PASSENGER_APPS_DIR, "#{@host}.#{PassengerPaneConfig::PASSENGER_APPS_EXTENSION}")
+    else
+      File.join(PassengerPaneConfig::PASSENGER_NGINX_APPS_DIR, "#{@host}.#{PassengerPaneConfig::PASSENGER_NGINX_APPS_EXTENSION}")
+    end
   end
 
   def rbSetValue_forKey(value, key)
@@ -197,8 +205,7 @@ class PassengerApplication < NSObject
   
   def to_hash
     if @new_app
-      @user_defined_data = ""
-      #@user_defined_data = "  <Directory \"#{File.join(@path.to_s, 'public')}\">\n    Order allow,deny\n    Allow from all\n  </Directory>"
+      @user_defined_data = apache? ? "  <Directory \"#{File.join(@path.to_s, 'public')}\">\n    Order allow,deny\n    Allow from all\n  </Directory>" : ""
     else
       update_path_in_user_defined_data!
     end
@@ -206,7 +213,6 @@ class PassengerApplication < NSObject
     {
       'app_type' => application_type,
       'config_path' => config_path,
-	  'nginx_config_path' => nginx_config_path,
       'host' => @host.to_s,
       'aliases' => @aliases.to_s,
       'path' => @path.to_s,
@@ -227,7 +233,7 @@ class PassengerApplication < NSObject
     (File.exist?(env_file) and File.read(env_file) =~ /Rails::Initializer/) ? RAILS : RACK
   end
   
-  def load_data_from_nginx_vhost_file(file = nginx_config_path)
+  def load_data_from_nginx_vhost_file(file = config_path)
     data = File.read(file).strip
     data.gsub!(/\n\s*server_name\s+(.+);/, '')
     self.host = $1

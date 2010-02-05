@@ -255,6 +255,9 @@ end
 
 describe "PrefPanePassenger, when adding applications" do
   tests PrefPanePassenger
+  def after_setup
+    PassengerApplication.any_instance.stubs(:apache?).returns(true)
+  end
   
   it "should open the browse panel when a new empty application is added to the applications array" do
     pref_pane.expects(:browse).times(1)
@@ -271,6 +274,7 @@ describe "PrefPanePassenger, when unselecting the pane" do
   include PrefPanePassengerSpecsHelper
   
   def after_setup
+    PassengerApplication.any_instance.stubs(:apache?).returns(true)
     ib_outlets :applicationsController => OSX::NSArrayController.alloc.init
     
     mainView = stub('Main View')

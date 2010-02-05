@@ -16,6 +16,7 @@ describe "PassengerApplication, with a new application" do
   tests PassengerApplication
   
   def after_setup
+    PassengerApplication.any_instance.stubs(:apache?).returns(true)
     PrefPanePassenger.any_instance.stubs(:applicationMarkedDirty)
     passenger_app.stubs(:execute)
   end
@@ -95,6 +96,7 @@ end
 describe "PassengerApplication#application_type" do
   before do
     @vhost = File.expand_path('../fixtures/blog.vhost.conf', __FILE__)
+    PassengerApplication.any_instance.stubs(:apache?).returns(true)
     @passenger_app = PassengerApplication.alloc.initWithFile(@vhost)
   end
   
@@ -120,6 +122,8 @@ describe "PassengerApplication, in general" do
   tests PassengerApplication
   
   def after_setup
+    PassengerApplication.any_instance.stubs(:apache?).returns(true)
+    PassengerApplication.stubs(:apache?).returns(true)
     PassengerApplication.any_instance.stubs(:application_type).returns(PassengerApplication::RAILS)
     
     @vhost = File.expand_path('../fixtures/blog.vhost.conf', __FILE__)
@@ -449,6 +453,7 @@ describe "PassengerApplication, when dealing with custom environments" do
   tests PassengerApplication
   
   def after_setup
+    PassengerApplication.any_instance.stubs(:apache?).returns(true)
     PassengerApplication.any_instance.stubs(:application_type).returns(PassengerApplication::RAILS)
     
     @vhost = File.expand_path('../fixtures/staging.vhost.conf', __FILE__)

@@ -25,4 +25,8 @@ module SharedPassengerBehaviour
     NSLog(obj.is_a?(String) ? obj : obj.inspect)
   end
   module_function :log
+  
+  def apache?
+    return false
+  end
 end
