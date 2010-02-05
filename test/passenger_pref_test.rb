@@ -149,6 +149,9 @@ end
 
 describe "PrefPanePassenger, while checking for passenger" do
   tests PrefPanePassenger
+  def after_setup
+    PassengerPaneConfig.stubs(:apache?).returns(true)
+  end
   
   it "should return true if the Passenger Apache modules is loaded" do
     pref_pane.stubs(:`).with('/usr/sbin/httpd -t -D DUMP_MODULES 2>&1').returns(%{

@@ -12,6 +12,7 @@ describe "ConfigUninstaller" do
     
     File.open(@vhost_file, 'w') { |f| f << 'bla' }
     
+    PassengerPaneConfig.stubs(:apache?).returns(true)
     @uninstaller = ConfigUninstaller.new([{ 'config_path' => @vhost_file, 'host' => @host, 'aliases' => @aliases }].to_yaml)
   end
   

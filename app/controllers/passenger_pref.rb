@@ -291,8 +291,11 @@ class PrefPanePassenger < NSPreferencePane
   end
   
   def passenger_installed?
-    `#{PassengerPaneConfig::HTTPD_BIN} -t -D DUMP_MODULES 2>&1`.include? 'passenger_module'
-	return true
+    if PassengerPaneConfig.apache?
+      return `#{PassengerPaneConfig::HTTPD_BIN} -t -D DUMP_MODULES 2>&1`.include? 'passenger_module'
+    else
+      return true
+    end
   end
   
   def path_for_browser

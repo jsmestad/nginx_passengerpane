@@ -88,6 +88,11 @@ class ConfigInstaller
   end
   
   def create_vhost_conf(index)
+    if !PassengerPaneConfig.apache?
+      create_nginx_vhost_conf index
+      return
+    end
+    
     app = @data[index]
     public_dir = File.join(app['path'], 'public')
     vhost = [
@@ -120,8 +125,8 @@ class ConfigInstaller
       "}"
     ].compact.join("\n")
 
-    OSX::NSLog("Will write nginx vhost file: #{app['nginx_config_path']}\nData: #{vhost}")
-    File.open(app['nginx_config_path'].bypass_safe_level_1, 'w') { |f| f << vhost }
+    OSX::NSLog("Will write nginx vhost file: #{app['config_path']}\nData: #{vhost}")
+    File.open(app['config_path'].bypass_safe_level_1, 'w') { |f| f << vhost }
   end
 
   def restart_apache!
@@ -133,15 +138,23 @@ class ConfigInstaller
   end
 
   def install!
-    verify_nginx_vhost_conf
-    verify_nginx_conf
+    if PassengerPaneConfig.apache?
+      verify_vhost_conf
+      verify_httpd_conf
+    else
+      verify_nginx_vhost_conf
+      verify_nginx_conf
+    end
     
     (0..(@data.length - 1)).each do |index|
       add_to_hosts index
-      create_nginx_vhost_conf index
+      create_vhost_conf index
     end
-    
-    reload_nginx!
+    if PassengerPaneConfig.apache?
+      restart_apache!
+    else
+      reload_nginx!
+    end
   end
 end
 

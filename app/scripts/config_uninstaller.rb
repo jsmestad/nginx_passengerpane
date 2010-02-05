@@ -55,9 +55,17 @@ class ConfigUninstaller
   def uninstall!
     (0..(@data.length - 1)).each do |index|
       remove_from_hosts index
-      remove_nginx_vhost_conf index
+      if PassengerPaneConfig.apache?
+        remove_vhost_conf index
+      else
+        remove_nginx_vhost_conf index
+      end
     end
-    reload_nginx!
+    if PassengerPaneConfig.apache?
+      restart_apache!
+    else
+      reload_nginx!
+    end
   end
 end
 

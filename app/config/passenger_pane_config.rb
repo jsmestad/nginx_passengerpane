@@ -13,4 +13,8 @@ module PassengerPaneConfig
   NGINX_CONF = File.join(NGINX_DIR, 'nginx.conf')
   PASSENGER_NGINX_APPS_DIR = File.join(NGINX_DIR, 'passenger_pane_servers')
   PASSENGER_NGINX_APPS_EXTENSION = "passenger.conf"
+  
+  def self.apache?
+    return false
+  end
 end

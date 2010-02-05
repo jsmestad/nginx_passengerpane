@@ -205,7 +205,7 @@ class PassengerApplication < NSObject
   
   def to_hash
     if @new_app
-      @user_defined_data = apache? ? "  <Directory \"#{File.join(@path.to_s, 'public')}\">\n    Order allow,deny\n    Allow from all\n  </Directory>" : ""
+      @user_defined_data = PassengerPaneConfig.apache? ? "  <Directory \"#{File.join(@path.to_s, 'public')}\">\n    Order allow,deny\n    Allow from all\n  </Directory>" : ""
     else
       update_path_in_user_defined_data!
     end

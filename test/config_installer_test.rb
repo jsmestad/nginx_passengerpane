@@ -15,6 +15,7 @@ describe "ConfigInstaller" do
     @app.environment = PassengerApplication::PRODUCTION
     @app.vhostname = 'het-manfreds-wiki.local:443'
     
+    PassengerPaneConfig.stubs(:apache?).returns(true)
     @installer = ConfigInstaller.new([@app.to_hash].to_yaml)
   end
   

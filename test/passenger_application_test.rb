@@ -16,6 +16,7 @@ describe "PassengerApplication, with a new application" do
   tests PassengerApplication
   
   def after_setup
+    PassengerPaneConfig.stubs(:apache?).returns(true)
     PassengerApplication.any_instance.stubs(:apache?).returns(true)
     PrefPanePassenger.any_instance.stubs(:applicationMarkedDirty)
     passenger_app.stubs(:execute)
