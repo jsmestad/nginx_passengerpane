@@ -19,7 +19,7 @@ describe "Nginx ConfigInstaller" do
   end
   
   after do
-    FileUtils.rm_rf @tmp
+    #FileUtils.rm_rf @tmp
   end
   
   it "should initialize" do
@@ -40,7 +40,7 @@ describe "Nginx ConfigInstaller" do
     @installer.add_to_hosts(0)
   end
   
-  it "should only add the main ServerName host to the hosts if there are no aliases" do
+  it "should only add the main server_name host to the hosts if there are no aliases" do
     @installer.data[0]['aliases'] = ''
     @installer.expects(:system).with("/usr/bin/dscl localhost -create /Local/Default/Hosts/het-manfreds-blog.local IPAddress 127.0.0.1")
     @installer.add_to_hosts(0)
@@ -78,76 +78,35 @@ server \{
   end
   
   it "should check if the vhost directory exists, if not add it" do
-    File.expects(:exist?).with(PassengerPaneConfig::PASSENGER_APPS_DIR).returns(false)
-    FileUtils.expects(:mkdir_p).with(PassengerPaneConfig::PASSENGER_APPS_DIR)
+    File.expects(:exist?).with(PassengerPaneConfig::PASSENGER_NGINX_APPS_DIR).returns(false)
+    FileUtils.expects(:mkdir_p).with(PassengerPaneConfig::PASSENGER_NGINX_APPS_DIR)
     
-    @installer.verify_vhost_conf
+    @installer.verify_nginx_vhost_conf
   end
   
-  it "should check if our configuration to load the vhosts has been added to the apache conf yet" do
-    File.stubs(:read).with(PassengerPaneConfig::HTTPD_CONF).returns("Include #{PassengerPaneConfig::APACHE_DIR}/other/*.conf")
-    
-    file_mock = mock("Apache conf")
-    File.expects(:open).with(PassengerPaneConfig::HTTPD_CONF, 'a').yields(file_mock)
-    file_mock.expects(:<<).with(%{
-
-# Added by the Passenger preference pane
-# Make sure to include the Passenger configuration (the LoadModule,
-# PassengerRoot, and PassengerRuby directives) before this section.
-<IfModule passenger_module>
-  NameVirtualHost *:80
-  <VirtualHost *:80>
-    ServerName _default_
-  </VirtualHost>
-  Include #{PassengerPaneConfig::PASSENGER_APPS_DIR}/*.conf
-</IfModule>})
-
-    @installer.verify_httpd_conf
+  it "should check if our configuration to load the vhosts and passenger_ruby have been added to the nginx conf" do
+    @nginx_conf = File.join(@tmp, 'test.nginx.conf')
+    PassengerPaneConfig::NGINX_CONF = @nginx_conf
+    conf = %{
+http \{
+\}}.sub(/^\n/, '')
+    File.open(@nginx_conf, 'w') {|f| f.write(conf)}
+    @installer.verify_nginx_conf
+    File.read(@nginx_conf).should == %{
+http \{
+  passenger_ruby /opt/local/bin/ruby;
+  passenger_root /opt/local/lib/passenger;
+  include /opt/local/etc/nginx/passenger_pane_servers/*.conf;
+\}}.sub(/^\n/, '')
   end
   
-  it "should not add the vhosts configuration to the apache conf if it's in there already" do
-    File.stubs(:read).with(PassengerPaneConfig::HTTPD_CONF).returns(%{
-Include #{PassengerPaneConfig::APACHE_DIR}/other/*.conf
-
-# Added by the Passenger preference pane
-# Make sure to include the Passenger configuration (the LoadModule,
-# PassengerRoot, and PassengerRuby directives) before this section.
-<IfModule passenger_module>
-  NameVirtualHost *:80
-  <VirtualHost *:80>
-    ServerName _default_
-  </VirtualHost>
-  Include #{PassengerPaneConfig::PASSENGER_APPS_DIR}/*.conf
-</IfModule>})
-    
-    File.expects(:open).times(0)
-    @installer.verify_httpd_conf
+  it "should not add the vhosts configuration and passenger_ruby to the nginx conf if they exist" do
+    @installer.verify_nginx_conf
   end
-  
-  it "should not check if our configuration to load the vhosts has been added to the apache conf yet" do
-    File.stubs(:read).with(PassengerPaneConfig::HTTPD_CONF).returns("Include #{PassengerPaneConfig::APACHE_DIR}/other/*.conf")
-    
-    file_mock = mock("Apache conf")
-    File.expects(:open).with(PassengerPaneConfig::HTTPD_CONF, 'a').yields(file_mock)
-    file_mock.expects(:<<).with(%{
 
-# Added by the Passenger preference pane
-# Make sure to include the Passenger configuration (the LoadModule,
-# PassengerRoot, and PassengerRuby directives) before this section.
-<IfModule passenger_module>
-  NameVirtualHost *:80
-  <VirtualHost *:80>
-    ServerName _default_
-  </VirtualHost>
-  Include #{PassengerPaneConfig::PASSENGER_APPS_DIR}/*.conf
-</IfModule>})
-    
-    @installer.verify_httpd_conf
-  end
-  
-  it "should restart Apache" do
-    @installer.expects(:system).with(PassengerPaneConfig::APACHE_RESTART_COMMAND)
-    @installer.restart_apache!
+  it "should reload Nginx" do
+    @installer.expects(:system).with(PassengerPaneConfig::NGINX_RELOAD_COMMAND)
+    @installer.reload_nginx!
   end
   
   it "should be able to take a serialized array of hashes and do all the work necessary in one go" do

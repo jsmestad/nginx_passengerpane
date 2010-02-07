@@ -49,7 +49,5 @@ class OSX::HelpHelper
   end
 end
 
-module PassengerPaneConfig; end
-
 ENV['TESTING_PASSENGER_PREF'] = 'true'
 require File.expand_path('../../app/controllers/passenger_pref', __FILE__)
