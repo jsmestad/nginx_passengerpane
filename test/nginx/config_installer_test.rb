@@ -1,6 +1,6 @@
 require 'test_helper'
 
-describe "ConfigInstaller" do
+describe "Nginx ConfigInstaller" do
   before do
     @tmp = File.expand_path('../tmp').bypass_safe_level_1
     FileUtils.mkdir_p @tmp
