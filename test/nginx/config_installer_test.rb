@@ -94,14 +94,27 @@ http \{
     @installer.verify_nginx_conf
     File.read(@nginx_conf).should == %{
 http \{
-  passenger_ruby /opt/local/bin/ruby;
-  passenger_root /opt/local/lib/passenger;
-  include /opt/local/etc/nginx/passenger_pane_servers/*.conf;
+  passenger_ruby #{PassengerPaneConfig::PASSENGER_RUBY};
+  passenger_root #{PassengerPaneConfig::PASSENGER_ROOT};
+  include #{PassengerPaneConfig::PASSENGER_NGINX_APPS_DIR}/*.conf;
 \}}.sub(/^\n/, '')
   end
   
-  it "should not add the vhosts configuration and passenger_ruby to the nginx conf if they exist" do
+  it "should not add the include configuration to the nginx conf if it exists" do
+    @nginx_conf = File.join(@tmp, 'test.nginx.conf')
+    PassengerPaneConfig::NGINX_CONF = @nginx_conf
+    conf = %{
+http \{
+  include #{PassengerPaneConfig::PASSENGER_NGINX_APPS_DIR}/*.conf;
+\}}.sub(/^\n/, '')
+    File.open(@nginx_conf, 'w') {|f| f.write(conf)}
     @installer.verify_nginx_conf
+    File.read(@nginx_conf).should == %{
+http \{
+  passenger_ruby #{PassengerPaneConfig::PASSENGER_RUBY};
+  passenger_root #{PassengerPaneConfig::PASSENGER_ROOT};
+  include #{PassengerPaneConfig::PASSENGER_NGINX_APPS_DIR}/*.conf;
+\}}.sub(/^\n/, '')
   end
 
   it "should reload Nginx" do

@@ -54,10 +54,10 @@ class ConfigInstaller
     a = []
     a << "http {"
     if !content.match(/^\s*passenger_ruby\s+/)
-      a << "  passenger_ruby /opt/local/bin/ruby;"
+      a << "  passenger_ruby #{PassengerPaneConfig::PASSENGER_RUBY};"
     end
     if !content.match(/^\s*passenger_root\s+/)
-      a << "  passenger_root /opt/local/lib/passenger;"
+      a << "  passenger_root #{PassengerPaneConfig::PASSENGER_ROOT};"
     end
     if !content.include? "include #{PassengerPaneConfig::PASSENGER_NGINX_APPS_DIR}/*.conf"
       a << "  include #{PassengerPaneConfig::PASSENGER_NGINX_APPS_DIR}/*.conf;"
