@@ -10,11 +10,11 @@ module PassengerPaneConfig
   # nginx
   NGINX_RELOAD_COMMAND = "sudo /opt/local/sbin/nginx -s reload"
   NGINX_DIR = "/opt/local/etc/nginx"
-  NGINX_CONF = File.join(NGINX_DIR, 'nginx.conf')
+  NGINX_CONF = "/opt/local/conf/nginx.conf" # File.join(NGINX_DIR, 'nginx.conf')
   PASSENGER_NGINX_APPS_DIR = File.join(NGINX_DIR, 'passenger_pane_servers')
   PASSENGER_NGINX_APPS_EXTENSION = "passenger.conf"
-  PASSENGER_RUBY = "/opt/local/bin/ruby"
-  PASSENGER_ROOT = "/opt/local/lib/passenger"
+  PASSENGER_RUBY = "/System/Library/Frameworks/Ruby.framework/Versions/1.8/usr/bin/ruby"
+  PASSENGER_ROOT = "/Library/Ruby/Gems/1.8/gems/passenger-2.2.11"
   
   def self.apache?
     return false
